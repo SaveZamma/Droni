@@ -28,8 +28,7 @@ class Gateway:
         th._start_new_thread(self.accept_client, (self.server_client, " "))
 
         self.server_drones.bind((self.HOST_D_ADDR, self.HOST_D_PORT))
-        self.server_client.listen(5)  # il server è in ascolto per la connessione del client
-        # th._start_new_thread(self.accept_drones, (self.server_drones, " "))
+        th._start_new_thread(self.accept_drones, (self.server_drones, " "))
 
     def accept_client(self, server_c, y):
         while True:
@@ -40,14 +39,8 @@ class Gateway:
                                     (self.client, addr))
 
     def accept_drones(self, server_d, y):
-        print("Ciaoooooo da accept drones")
         while True:
-            if len(self.drones) < 2:
-                drone, addr = server_d.accept()
-                self.drones.append(drone)
-
-                # utilizza un thread in modo da non intasare il thread della gui
-                th._start_new_thread(self.send_receive_drones_message, (drone, addr))
+            data, address = self.server_drones.recvfrom(4096)
 
 
     def send_receive_client_message(self, client_connection, client_ip_addr):
