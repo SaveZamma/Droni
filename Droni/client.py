@@ -2,14 +2,17 @@
 
 from pickle import NONE
 import socket
+import threading
 import tkinter as tk
 
 class Client:
 
     HOST_ADDR = ''
     HOST_PORT = 0
+    BUFFER_SIZE = 1024
 
     client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    display = None
     ind_entry = None
     drone_entry = None
 
@@ -21,6 +24,9 @@ class Client:
         try:
             self.client.connect((self.HOST_ADDR, self.HOST_PORT))
             self.client.send(name.encode())
+            
+            threading._start_new_thread(self.receiveMessage, (self.client, "m"))
+
         except Exception as e:
             print(e)
             #tk.messagebox.showerror(title="ERROR!!!",
@@ -30,7 +36,24 @@ class Client:
             #                        " Server may be Unavailable. Try again later")
         
     def sendOrder(self):
-        print(self.drone_entry.get() + ": " + self.ind_entry.get())
+        print(self.ind_entry.get() + ':' + self.drone_entry.get())
+
+        bMsg = str.encode(self.ind_entry.get() + ':' + self.drone_entry.get())
+        self.client.sendall(bMsg)
+
+
+    def receiveMessage(self, sck, m):
+        while True:
+            msgFromServer = self.client.recv(self.BUFFER_SIZE)
+
+            if not msgFromServer: break
+
+            if msgFromServer.startswith("".encode()):
+                self.display["text"] = msgFromServer.decode()
+
+
+        self.client.close()
+
 
     def createWindow(self):
         window = tk.Tk()
@@ -51,6 +74,9 @@ class Client:
         self.drone_entry = tk.Entry(drone_frame)
         self.drone_entry.pack(side=tk.LEFT)
         drone_frame.pack(side = tk.TOP)
+        
+        msg_frame = tk.Frame(window)
+        self.display = tk.Label(msg_frame, text="").pack()
 
         # send button
         btn_frame = tk.Frame(window)
@@ -60,10 +86,13 @@ class Client:
         btn_connect.pack(side=tk.LEFT)
         btn_frame.pack(side=tk.BOTTOM)
 
+
         window.mainloop()
 
 if __name__ == "__main__":
+    print('Creating Client...')
     c1 = Client('127.0.0.1', 8080)
 
+    print('Connecting...')
     c1.connect('Client')
     c1.createWindow()
