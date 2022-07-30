@@ -1,5 +1,6 @@
 # -*- coding:utf-8 -*-
 
+from ast import Str
 import socket as sk
 import tkinter as tk
 import threading as th
@@ -22,11 +23,10 @@ class Gateway:
     ip_to_deliver = ""
      
     def __init__(self):
-        print("Ciaoooooo")
         self.server_client.bind((self.HOST_C_ADDR, self.HOST_C_PORT))
         self.server_client.listen(5)  # il server è in ascolto per la connessione del client
         th._start_new_thread(self.accept_client, (self.server_client, " "))
-        print("Ciaoooooo")
+
         self.server_drones.bind((self.HOST_D_ADDR, self.HOST_D_PORT))
         self.server_client.listen(5)  # il server è in ascolto per la connessione del client
         # th._start_new_thread(self.accept_drones, (self.server_drones, " "))
@@ -54,22 +54,24 @@ class Gateway:
 
         client_name = client_connection.recv(4096)
 
-        print(client_name)
+        #print(client_name)
 
         while True:
             
             data = client_connection.recv(4096)
             if not data: break
 
-            print("DATA:\n")
+            print("DATA:")
             print(data)
 
             # TODO Salvo: da sistemare con le lunghezze corrette una volta che si ha un msg di prova
-            order_data = data[11:len(data)]
+            #order_data = data[0:9]
+
+            res = data.decode().split(":", 1)
 
             msg = {
-                "IP_DRONE": "127.0.0.1",
-                "ADDR": 'oop'
+                "IP_DRONE": res[0],
+                "ADDR": res[1]
             }
 
             print("IP_DRONE: " + msg.get("IP_DRONE") + "\n")
@@ -78,8 +80,19 @@ class Gateway:
             self.ip_to_deliver = msg.get("IP_DRONE")
             self.address_to_deliver = msg.get("ADDR")
 
-            if self.address_to_deliver == "":
-                self.client.send( self.is_drone_ready(self.ip_to_deliver).encode() )
+            if self.address_to_deliver != "":
+                print("hellooooo")
+                print(self.is_drone_ready(self.ip_to_deliver))
+
+                available = ""
+
+                if self.is_drone_ready(self.ip_to_deliver):
+                    available = "True"
+                else:
+                    available = "False"
+
+                self.client.send( available.encode() )
+                
 
 
 
