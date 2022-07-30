@@ -36,6 +36,22 @@ class Drone(threading.Thread):
     def __createWindow(self):
         window = tk.Tk()
         window.title("Drone " + self.droneId.__str__())
+
+        # drones side of gateway interface
+        drones_frame = tk.Frame(window)
+        lblLine = tk.Label(drones_frame, text="Drones Messages")
+        lblLine.pack(side=tk.TOP)
+        scrollBar = tk.Scrollbar(drones_frame)
+        scrollBar.pack(side=tk.RIGHT, fill=tk.Y)
+        tkDisplay = tk.Text(drones_frame, height=10, width=30)
+        tkDisplay.pack(side=tk.LEFT, fill=tk.Y, padx=(5, 0))
+        scrollBar.config(command=tkDisplay.yview)
+        tkDisplay.config(yscrollcommand=scrollBar.set,
+                         background="#F4F6F7",
+                         highlightbackground="grey",
+                         state="disabled")
+        drones_frame.pack(side=tk.TOP, pady=(5, 10))
+
         window.mainloop()
 
     def run(self):
