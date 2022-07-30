@@ -14,6 +14,7 @@ class Drone(threading.Thread):
 
     droneId = 0
     droneSocket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    display = None
     _isAvailable = True
 
     def __init__(self, host_addr, host_port, id):
@@ -29,17 +30,24 @@ class Drone(threading.Thread):
         pass
 
     @staticmethod
-    def __deliver(address):
+    def __deliverOrder(address):
+        time = randint(0,3)
         print("Drone.deliver" + address)
+
+        self._isAvailable = False
+        sleep(time)
+
+        self._isAvailable = True
+        self.sendAvailability()
         
     def __takeOrder(self):
         print("Drone.takeOrder")
         self.__deliver("via aldo moro, 99")
 
     def sendAvailability(self):
-        bMsg = "True" if self._isAvailable else "False"
-        print(bMsg)
-        #self.droneSocket.sendto(bMsg, (self.HOST_ADDR, self.HOST_PORT))
+        msg = "True" if self._isAvailable else "False"
+        print(f'Drone {self.droneId} AVAILABLE: {msg}')
+        self.droneSocket.sendto(msg.encode(), (self.HOST_ADDR, self.HOST_PORT))
 
     def __receiveMessage(self):
         while True:
@@ -49,7 +57,12 @@ class Drone(threading.Thread):
 
             if msgFromServer.startswith("".encode()):
                 self.sendAvailability()
+            elif msgFromServer.startswith("".encode()):
+                addr = msgFromServer.decode().split(':',1)
+                print(addr)
+                self.__deliverOrder(addr[1])
 
+        self.droneSocket.close()
 
 
     def __createWindow(self):
@@ -60,22 +73,27 @@ class Drone(threading.Thread):
         drones_frame = tk.Frame(window)
         lblLine = tk.Label(drones_frame, text="Drones Messages")
         lblLine.pack(side=tk.TOP)
+
         scrollBar = tk.Scrollbar(drones_frame)
         scrollBar.pack(side=tk.RIGHT, fill=tk.Y)
-        tkDisplay = tk.Text(drones_frame, height=10, width=30)
-        tkDisplay.pack(side=tk.LEFT, fill=tk.Y, padx=(5, 0))
-        scrollBar.config(command=tkDisplay.yview)
-        tkDisplay.config(yscrollcommand=scrollBar.set,
+
+        self.display = tk.Text(drones_frame, height=10, width=30)
+        self.display.pack(side=tk.LEFT, fill=tk.Y, padx=(5, 0))
+
+        scrollBar.config(command=self.display.yview)
+        self.display.config(yscrollcommand=scrollBar.set,
                          background="#F4F6F7",
                          highlightbackground="grey",
                          state="disabled")
+
         drones_frame.pack(side=tk.TOP, pady=(5, 10))
+        self.display.insert(tk.END, 'Drone START')
 
         window.mainloop()
 
     def run(self):
         self.sendAvailability()
-        #self.__receiveMessage()
+        threading._start_new_thread(self.__receiveMessage, ())
         self.__createWindow()
 
 if __name__ == "__main__":
