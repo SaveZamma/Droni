@@ -17,12 +17,16 @@ class Gateway:
     client = None
     drones = []
     drones_names = []
+
+    address_to_deliver = ""
+    ip_to_deliver = ""
      
     def __init__(self):
+        print("Ciaoooooo")
         self.server_client.bind((self.HOST_C_ADDR, self.HOST_C_PORT))
         self.server_client.listen(5)  # il server è in ascolto per la connessione del client
         th._start_new_thread(self.accept_client, (self.server_client, " "))
-
+        print("Ciaoooooo")
         self.server_drones.bind((self.HOST_D_ADDR, self.HOST_D_PORT))
         self.server_client.listen(5)  # il server è in ascolto per la connessione del client
         # th._start_new_thread(self.accept_drones, (self.server_drones, " "))
@@ -30,12 +34,13 @@ class Gateway:
     def accept_client(self, server_c, y):
         while True:
             self.client, addr = server_c.accept()
-
+            
             # utilizza un thread in modo da non intasare il thread della gui
             th._start_new_thread(self.send_receive_client_message,
                                     (self.client, addr))
 
     def accept_drones(self, server_d, y):
+        print("Ciaoooooo da accept drones")
         while True:
             if len(self.drones) < 2:
                 drone, addr = server_d.accept()
@@ -45,12 +50,65 @@ class Gateway:
                 th._start_new_thread(self.send_receive_drones_message, (drone, addr))
 
 
-    def send_receive_client_message(client_connection, client_ip_addr):
+    def send_receive_client_message(self, client_connection, client_ip_addr):
+
+        client_name = client_connection.recv(4096)
+
+        print(client_name)
+
+        while True:
+            
+            data = client_connection.recv(4096)
+            if not data: break
+
+            print("DATA:\n")
+            print(data)
+
+            # TODO Salvo: da sistemare con le lunghezze corrette una volta che si ha un msg di prova
+            order_data = data[11:len(data)]
+
+            msg = {
+                "IP_DRONE": "127.0.0.1",
+                "ADDR": 'oop'
+            }
+
+            print("IP_DRONE: " + msg.get("IP_DRONE") + "\n")
+            print("ADDR: " + msg.get("ADDR") + "\n")
+
+            self.ip_to_deliver = msg.get("IP_DRONE")
+            self.address_to_deliver = msg.get("ADDR")
+
+            if self.address_to_deliver == "":
+                self.client.send( self.is_drone_ready(self.ip_to_deliver).encode() )
+
+
+
+
+    def send_receive_drones_message(self, drone_connection, drone_ip_addr):
         pass
 
-    def send_receive_drones_message(drone_connection, drone_ip_addr):
-        pass
+        # trova l'indice del client, quindi lo rimuove da entrambi gli elenchi (elenco dei nomi dei client e elenco delle connessioni)
+        idx = self.get_drone_index(self.drones, drone_connection)
+        del self.drones_names[idx]
+        del self.drones[idx]
+        drone_connection.close()
 
+    # Restituisce l'indice del client corrente nell'elenco dei client
+    def get_drone_index(self, curr_drone):
+        idx = 0
+        for conn in self.drones:
+            if conn == curr_drone:
+                break
+            idx = idx + 1
+
+        return idx
+
+    # Indica se il drone è diponibile
+    def is_drone_ready(self, drone_ip):
+        for d in self.drones:
+            if d == drone_ip:
+                return True
+        return False
 
 
 

@@ -23,11 +23,6 @@ class Client:
             self.client.send(name.encode())
         except Exception as e:
             print(e)
-            #tk.messagebox.showerror(title="ERROR!!!",
-            #                        message="Cannot connect to host: " +
-            #                        self.HOST_ADDR + " on port: " +
-            #                        str(self.HOST_PORT) +
-            #                        " Server may be Unavailable. Try again later")
         
     def sendOrder(self):
         print(self.drone_entry.get() + ": " + self.ind_entry.get())
