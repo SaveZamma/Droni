@@ -5,32 +5,41 @@ import socket as sk
 import tkinter as tk
 import threading as th
 import queue
+from tkinter.tix import WINDOW
     
 DRONES_NUMBER = 3
 BUFSIZE = 1024
 
 class Gateway:
+    WINDOW = None
 
     server_client = sk.socket(sk.AF_INET, sk.SOCK_STREAM)
     server_drones = sk.socket(sk.AF_INET, sk.SOCK_DGRAM)
     HOST_C_ADDR = '127.0.0.1'
     HOST_C_PORT = 8080
     client = None
+    cDisplayer = None
 
     D_HOST = ('127.168.1.1', 8081)
     DRONES_CONNECTED = []
     dSocket = None
+    dDisplayer = None
     dMessages = None
 
     address_to_deliver = ""
     ip_to_deliver = ""
      
     def __init__(self):
+        self.createWindow()
+
         self.server_client.bind((self.HOST_C_ADDR, self.HOST_C_PORT))
         self.server_client.listen(5)  # il server � in ascolto per la connessione del client
         th._start_new_thread(self.accept_client, ())
 
         self.init_UDP_connection()
+
+        self.WINDOW.mainloop()
+
 
     ###########################################################################
 
@@ -43,7 +52,7 @@ class Gateway:
         t1.start()
 
     def UDP_receive(self):
-        print(f'Listening on {self.D_HOST}')
+        self._printOnDisplayer(self.dDisplayer, f'Listening on {self.D_HOST}')
 
         self.registerDrones()
 
@@ -51,7 +60,7 @@ class Gateway:
             try:
                 msg, addr = self.dSocket.recvfrom(BUFSIZE)
                 self.dMessages.put((msg, addr))
-                print(f'{addr} sent: {msg.decode()} ')
+                self._printOnDisplayer(self.dDisplayer, f'{addr} sent: {msg.decode()} ')
 
                 if msg.decode().startswith('AVAILABLE:'):
                     pass
@@ -69,7 +78,7 @@ class Gateway:
 
                 i = i + 1
         
-        print(f'Drones connected: {self.DRONES_CONNECTED}')
+        self._printOnDisplayer(self.dDisplayer, f'Drones connected: {self.DRONES_CONNECTED}')
 
     def calculateDroneID(self,sender):
         """Calculates the drone's ID starting from its IP address.
@@ -140,51 +149,51 @@ class Gateway:
    
 
 
- 
-
-
-
-
 
     def createWindow(self):
-        window = tk.Tk()
-        window.title("Gateway")
+        self.WINDOW = tk.Tk()
+        self.WINDOW.title("Gateway")
 
         # client side of gateway interface
-        client_frame = tk.Frame(window)
+        client_frame = tk.Frame(self.WINDOW)
         lblLine = tk.Label(client_frame, text="Client Messages")
         lblLine.pack(side=tk.TOP)
         scrollBar = tk.Scrollbar(client_frame)
         scrollBar.pack(side=tk.RIGHT, fill=tk.Y)
-        tkDisplay = tk.Text(client_frame, height=10, width=30)
-        tkDisplay.pack(side=tk.LEFT, fill=tk.Y, padx=(5, 0))
-        scrollBar.config(command=tkDisplay.yview)
-        tkDisplay.config(yscrollcommand=scrollBar.set,
+        self.cDisplayer = tk.Text(client_frame, height=10, width=30)
+        self.cDisplayer.pack(side=tk.LEFT, fill=tk.Y, padx=(5, 0))
+        scrollBar.config(command=self.cDisplayer.yview)
+        self.cDisplayer.config(yscrollcommand=scrollBar.set,
                          background="#F4F6F7",
                          highlightbackground="grey",
                          state="disabled")
         client_frame.pack(side=tk.LEFT, pady=(5, 10))
 
         # drones side of gateway interface
-        drones_frame = tk.Frame(window)
+        drones_frame = tk.Frame(self.WINDOW)
         lblLine = tk.Label(drones_frame, text="Drones Messages")
         lblLine.pack(side=tk.TOP)
         scrollBar = tk.Scrollbar(drones_frame)
         scrollBar.pack(side=tk.RIGHT, fill=tk.Y)
-        tkDisplay = tk.Text(drones_frame, height=10, width=30)
-        tkDisplay.pack(side=tk.LEFT, fill=tk.Y, padx=(5, 0))
-        scrollBar.config(command=tkDisplay.yview)
-        tkDisplay.config(yscrollcommand=scrollBar.set,
+        self.dDisplayer = tk.Text(drones_frame, height=10, width=30)
+        self.dDisplayer.pack(side=tk.LEFT, fill=tk.Y, padx=(5, 0))
+        scrollBar.config(command=self.dDisplayer.yview)
+        self.dDisplayer.config(yscrollcommand=scrollBar.set,
                          background="#F4F6F7",
-                         highlightbackground="grey",
-                         state="disabled")
+                         highlightbackground="grey")
         drones_frame.pack(side=tk.RIGHT, pady=(5, 10))
 
-        window.mainloop()
+
+    def _printOnDisplayer(self,display,text):
+        print(text)
+        display.config(state=tk.NORMAL)
+        display.insert(tk.END, text+"\n")
+        display.config(state=tk.DISABLED)
+
 
 if __name__ == "__main__":
     g = Gateway()
-    g.createWindow()
+    #g.createWindow()
     
     
 
