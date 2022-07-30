@@ -8,11 +8,13 @@ from gateway import Gateway
 
 class Drone(threading.Thread):
 
-    droneId = 0
     HOST_ADDR = ''
     HOST_PORT = 0
+    BUFFER_SIZE = 1024
+
+    droneId = 0
     droneSocket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    available = True
+    _isAvailable = True
 
     def __init__(self, host_addr, host_port, id):
         super().__init__()
@@ -21,9 +23,10 @@ class Drone(threading.Thread):
         self.droneId = id
     
     def __connect(self, name):        
-        self.droneSocket.connect((self.HOST_ADDR, self.HOST_PORT))
-        self.droneSocket.send(name.encode()) # Invia il nome al server dopo la connessione
-        print ("Drone.connect")
+        # self.droneSocket.connect((self.HOST_ADDR, self.HOST_PORT))
+        # self.droneSocket.send(name.encode()) # Invia il nome al server dopo la connessione
+        #print (f'D{self.droneId}: Connected')
+        pass
 
     @staticmethod
     def __deliver(address):
@@ -32,6 +35,22 @@ class Drone(threading.Thread):
     def __takeOrder(self):
         print("Drone.takeOrder")
         self.__deliver("via aldo moro, 99")
+
+    def sendAvailability(self):
+        bMsg = "True" if self._isAvailable else "False"
+        print(bMsg)
+        #self.droneSocket.sendto(bMsg, (self.HOST_ADDR, self.HOST_PORT))
+
+    def __receiveMessage(self):
+        while True:
+            msgFromServer, server = self.droneSocket.recvfrom(self.BUFFER_SIZE)
+
+            if not msgFromServer: break
+
+            if msgFromServer.startswith("".encode()):
+                self.sendAvailability()
+
+
 
     def __createWindow(self):
         window = tk.Tk()
@@ -55,21 +74,24 @@ class Drone(threading.Thread):
         window.mainloop()
 
     def run(self):
-        self.__connect('Giacomo')
-        self.__takeOrder()
+        self.sendAvailability()
+        #self.__receiveMessage()
         self.__createWindow()
 
 if __name__ == "__main__":
+    DRONES_NUMBER = 3
+    dronesThreads = []
 
     i = 0
-    while i < 3:
+    while i < DRONES_NUMBER:
+        print(f'Creating Drone {i+1}...')
+        dronesThreads.append(Drone('127.0.0.1', 8080, i+1))
 
-        d = Drone('127.0.0.1', 8080, i)
-
-        d.start()
+        dronesThreads[i].start()
         #d.join()
 
         i += 1
+
 
 
 
