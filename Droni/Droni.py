@@ -61,10 +61,15 @@ class Drone(threading.Thread):
 
 if __name__ == "__main__":
 
-    d1 = Drone('127.0.0.1', 8080, 1)
+    i = 0
+    while i < 3:
 
-    d1.start()
-    d1.join()
+        d = Drone('127.0.0.1', 8080, i)
+
+        d.start()
+        #d.join()
+
+        i += 1
 
 
 
