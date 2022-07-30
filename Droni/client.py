@@ -106,9 +106,11 @@ class Client:
         btn_frame = tk.Frame(window)
         self.btn_ask = tk.Button(btn_frame, 
                                 text="ASK",
-                                command=lambda : self.sendOrder())
+                                command=lambda : self.ask_availability())
         self.btn_ask.pack(side=tk.RIGHT)
         btn_frame.pack(side=tk.BOTTOM)
+
+        self.enable_send_btn()
 
         window.mainloop()
 

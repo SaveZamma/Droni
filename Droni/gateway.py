@@ -67,33 +67,40 @@ class Gateway:
             # TODO Salvo: da sistemare con le lunghezze corrette una volta che si ha un msg di prova
             #order_data = data[0:9]
 
-            res = data.decode().split(":", 1)
+            if data.startswith("ASK".encode()):
+                self.__ask_behaviour(data)
+            elif data.startswith("SEND".encode()):
+                self.__send_behaviour(data)
 
-            msg = {
-                "IP_DRONE": res[0],
-                "ADDR": res[1]
-            }
 
-            print("IP_DRONE: " + msg.get("IP_DRONE") + "\n")
-            print("ADDR: " + msg.get("ADDR") + "\n")
-
-            self.ip_to_deliver = msg.get("IP_DRONE")
-            self.address_to_deliver = msg.get("ADDR")
-
-            if self.address_to_deliver != "":
-                print("hellooooo")
-                print(self.is_drone_ready(self.ip_to_deliver))
-
-                available = ""
-
-                if self.is_drone_ready(self.ip_to_deliver):
-                    available = "True"
-                else:
-                    available = "False"
-
-                self.client.send( available.encode() )
+            
                 
+    def __send_behaviour(self, data):
+        res = data.decode().split(":", 1)
 
+        msg = {
+            "IP_DRONE": res[1],
+            "ADDR": res[2]
+        }
+
+        print("IP_DRONE: " + msg.get("IP_DRONE") + "\n")
+        print("ADDR: " + msg.get("ADDR") + "\n")
+
+        self.ip_to_deliver = msg.get("IP_DRONE")
+        self.address_to_deliver = msg.get("ADDR")
+
+
+    def __ask_behaviour(self, data):
+        available = ""
+
+        res = data.decode().split(":", 1)
+
+        if self.is_drone_ready(res[1]):
+            available = "True"
+        else:
+            available = "False"
+
+        self.client.send(available.encode())
 
 
 
