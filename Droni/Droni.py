@@ -5,6 +5,8 @@ import socket
 import tkinter as tk
 import time
 from gateway import Gateway
+import random
+
 
 class Drone(threading.Thread):
 
@@ -29,13 +31,13 @@ class Drone(threading.Thread):
         #print (f'D{self.droneId}: Connected')
         pass
 
-    @staticmethod
-    def __deliverOrder(address):
-        time = randint(0,3)
+
+    def __deliverOrder(self, address):
+        time = random.randint(0,3)
         print("Drone.deliver" + address)
 
         self._isAvailable = False
-        sleep(time)
+        time.sleep(time)
 
         self._isAvailable = True
         self.sendAvailability()

@@ -25,29 +25,31 @@ class Gateway:
     def __init__(self):
         self.server_client.bind((self.HOST_C_ADDR, self.HOST_C_PORT))
         self.server_client.listen(5)  # il server è in ascolto per la connessione del client
-        th._start_new_thread(self.accept_client, (self.server_client, " "))
+        th._start_new_thread(self.accept_client, ())
 
         self.server_drones.bind((self.HOST_D_ADDR, self.HOST_D_PORT))
-        th._start_new_thread(self.accept_drones, (self.server_drones, " "))
+        th._start_new_thread(self.accept_drones, ())
 
-    def accept_client(self, server_c, y):
+    def accept_client(self):
         while True:
-            self.client, addr = server_c.accept()
+            self.client, addr = self.server_client.accept()
             
             # utilizza un thread in modo da non intasare il thread della gui
             th._start_new_thread(self.send_receive_client_message,
                                     (self.client, addr))
 
-    def accept_drones(self, server_d, y):
+    def accept_drones(self):
         while True:
             data, address = self.server_drones.recvfrom(4096)
+
+            self.drones.append(data)
+
+            th._start_new_thread(self._receive_drones_message, (data, address))
 
 
     def send_receive_client_message(self, client_connection, client_ip_addr):
 
         client_name = client_connection.recv(4096)
-
-        #print(client_name)
 
         while True:
             
@@ -56,9 +58,6 @@ class Gateway:
 
             print("DATA:")
             print(data)
-
-            # TODO Salvo: da sistemare con le lunghezze corrette una volta che si ha un msg di prova
-            #order_data = data[0:9]
 
             if data.startswith("ASK".encode()):
                 self.__ask_behaviour(data)
@@ -82,6 +81,8 @@ class Gateway:
         self.ip_to_deliver = msg.get("IP_DRONE")
         self.address_to_deliver = msg.get("ADDR")
 
+        self._sent_drone_message()
+
 
     def __ask_behaviour(self, data):
         available = ""
@@ -96,17 +97,27 @@ class Gateway:
         self.client.send(available.encode())
 
 
+    def _receive_drones_message(self, drone_connection, drone_ip_addr):     
+        
+        drone_name = drone_connection.recv(4096)
 
-    def send_receive_drones_message(self, drone_connection, drone_ip_addr):
-        pass
+        while True:
 
-        # trova l'indice del client, quindi lo rimuove da entrambi gli elenchi (elenco dei nomi dei client e elenco delle connessioni)
-        idx = self.get_drone_index(self.drones, drone_connection)
-        del self.drones_names[idx]
-        del self.drones[idx]
-        drone_connection.close()
+            data = drone_connection.recvfrom(4096)
+            if not data: break
 
-    # Restituisce l'indice del client corrente nell'elenco dei client
+            print("DATA:")
+            print(data)
+
+            res = data.decode().split(":", 1)
+
+            self.drones_names.append(res[1])
+
+    def _sent_drone_message(self):
+        self.server_drones.sendto(self.address_to_deliver.encode(), self.ip_to_deliver)
+
+
+    # Restituisce l'indice del drone corrente nell'elenco dei droni
     def get_drone_index(self, curr_drone):
         idx = 0
         for conn in self.drones:
