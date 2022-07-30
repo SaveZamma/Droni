@@ -1,75 +1,71 @@
 # -*- coding:utf-8 -*-
 
+import socket as sk
 import threading
-import socket
+import random as rnd
 import tkinter as tk
+from token import NEWLINE
 import time
-from gateway import Gateway
-import random
 
+DRONES_NUMBER = 3
+dronesThreads = []
+
+HOST = ('127.168.1.1', 8081)
+BUFSIZE = 1024
 
 class Drone(threading.Thread):
+    ID = 0
+    IP_ADDR = ''
+    isAvailable = True
+    droneSocket = None
 
-    HOST_ADDR = ''
-    HOST_PORT = 0
-    BUFFER_SIZE = 1024
-
-    droneId = 0
-    droneSocket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     display = None
-    _isAvailable = True
 
-    def __init__(self, host_addr, host_port, id):
+    def __init__(self, dorneAddress, id):
         super().__init__()
-        self.HOST_PORT = host_port
-        self.HOST_ADDR = host_addr
-        self.droneId = id
-    
-    def __connect(self, name):        
-        # self.droneSocket.connect((self.HOST_ADDR, self.HOST_PORT))
-        # self.droneSocket.send(name.encode()) # Invia il nome al server dopo la connessione
-        #print (f'D{self.droneId}: Connected')
-        pass
+        self.ID = id
+        self.IP_ADDR = dorneAddress
 
+        # Define Host's IP and Port
+        self.droneSocket = sk.socket(sk.AF_INET, sk.SOCK_DGRAM)
 
-    def __deliverOrder(self, address):
-        time = random.randint(0,3)
-        print("Drone.deliver" + address)
-
-        self._isAvailable = False
-        time.sleep(time)
-
-        self._isAvailable = True
-        self.sendAvailability()
+        # Bind to client's IP and Port. 
+        # Different clients should have different ports, that's why we use randint() here
+        self.droneSocket.bind((dorneAddress, rnd.randint(8000,9000)))
         
-    def __takeOrder(self):
-        print("Drone.takeOrder")
-        self.__deliver("via aldo moro, 99")
 
     def sendAvailability(self):
-        msg = "True" if self._isAvailable else "False"
-        print(f'Drone {self.droneId} AVAILABLE: {msg}')
-        self.droneSocket.sendto(msg.encode(), (self.HOST_ADDR, self.HOST_PORT))
+        msg = "True" if self.isAvailable else "False"
+        msg = 'AVAILABLE:' + msg
+        try:
+            self.droneSocket.sendto(msg.encode(), (HOST[0], HOST[1]))
+            print(f'Drone {self.ID}: {msg}')
+        except:
+            print('ERROR: Could not send message to server')
 
-    def __receiveMessage(self):
+
+    def receive(self):
         while True:
-            msgFromServer, server = self.droneSocket.recvfrom(self.BUFFER_SIZE)
+            try:
+                msg, _ = self.droneSocket.recvfrom(BUFSIZE)
+                print(f'{self.ID} Received: {msg.decode()}'+ NEWLINE)
 
-            if not msgFromServer: break
 
-            if msgFromServer.startswith("".encode()):
-                self.sendAvailability()
-            elif msgFromServer.startswith("".encode()):
-                addr = msgFromServer.decode().split(':',1)
-                print(addr)
-                self.__deliverOrder(addr[1])
+            except:
+                print('ERROR: Could not receive message from server')
 
-        self.droneSocket.close()
+
+    def run(self):
+        t = threading.Thread(target=self.receive)
+        t.start()
+
+        self.sendAvailability()
+        self.__createWindow()
 
 
     def __createWindow(self):
         window = tk.Tk()
-        window.title("Drone " + self.droneId.__str__())
+        window.title("Drone " + self.ID.__str__())
 
         # drones side of gateway interface
         drones_frame = tk.Frame(window)
@@ -93,24 +89,21 @@ class Drone(threading.Thread):
 
         window.mainloop()
 
-    def run(self):
-        self.sendAvailability()
-        threading._start_new_thread(self.__receiveMessage, ())
-        self.__createWindow()
+    
 
-if __name__ == "__main__":
-    DRONES_NUMBER = 3
-    dronesThreads = []
+
+
+if __name__ == '__main__':
+    baseIP = '127.168.1.'
 
     i = 0
     while i < DRONES_NUMBER:
-        print(f'Creating Drone {i+1}...')
-        dronesThreads.append(Drone('127.0.0.1', 8080, i+1))
+        d = Drone(f'{baseIP}{i+2}',i)
+        dronesThreads.append(d)
+        print(f'Starting Drone {i}...')
+        d.start()
 
-        dronesThreads[i].start()
-        #d.join()
-
-        i += 1
+        i = i+1
 
 
 

@@ -4,6 +4,10 @@ from ast import Str
 import socket as sk
 import tkinter as tk
 import threading as th
+import queue
+    
+DRONES_NUMBER = 3
+BUFSIZE = 1024
 
 class Gateway:
 
@@ -11,24 +15,71 @@ class Gateway:
     server_drones = sk.socket(sk.AF_INET, sk.SOCK_DGRAM)
     HOST_C_ADDR = '127.0.0.1'
     HOST_C_PORT = 8080
-
-    HOST_D_ADDR = '127.0.0.2'
-    HOST_D_PORT = 8081
-
     client = None
-    drones = []
-    drones_names = []
+
+    D_HOST = ('127.168.1.1', 8081)
+    DRONES_CONNECTED = []
+    dSocket = None
+    dMessages = None
 
     address_to_deliver = ""
     ip_to_deliver = ""
      
     def __init__(self):
         self.server_client.bind((self.HOST_C_ADDR, self.HOST_C_PORT))
-        self.server_client.listen(5)  # il server è in ascolto per la connessione del client
+        self.server_client.listen(5)  # il server ï¿½ in ascolto per la connessione del client
         th._start_new_thread(self.accept_client, ())
 
-        self.server_drones.bind((self.HOST_D_ADDR, self.HOST_D_PORT))
-        th._start_new_thread(self.accept_drones, ())
+        self.init_UDP_connection()
+
+    ###########################################################################
+
+    def init_UDP_connection(self):
+        self.dSocket = sk.socket(sk.AF_INET, sk.SOCK_DGRAM)
+        self.dSocket.bind(self.D_HOST)
+        self.dMessages = queue.Queue()
+
+        t1 = th.Thread(target=self.UDP_receive)
+        t1.start()
+
+    def UDP_receive(self):
+        print(f'Listening on {self.D_HOST}')
+
+        self.registerDrones()
+
+        while True:
+            try:
+                msg, addr = self.dSocket.recvfrom(BUFSIZE)
+                self.dMessages.put((msg, addr))
+                print(f'{addr} sent: {msg.decode()} ')
+
+                if msg.decode().startswith('AVAILABLE:'):
+                    pass
+
+            except:
+                print('ERROR: Failed to receive message')
+
+    def registerDrones(self):
+        i = 0;
+        while i < DRONES_NUMBER:
+            msg, sender = self.dSocket.recvfrom(BUFSIZE)
+
+            if msg.decode().startswith('AVAILABLE:'):
+                self.DRONES_CONNECTED.append((sender[0],self.calculateDroneID(sender)))
+
+                i = i + 1
+        
+        print(f'Drones connected: {self.DRONES_CONNECTED}')
+
+    def calculateDroneID(self,sender):
+        """Calculates the drone's ID starting from its IP address.
+        
+            Attributes:
+             - `sender`: Tuple (IP, Port)
+        """
+        return int(sender[0][len(sender[0])-1:])-2
+
+    ###########################################################################
 
     def accept_client(self):
         while True:
@@ -37,14 +88,6 @@ class Gateway:
             # utilizza un thread in modo da non intasare il thread della gui
             th._start_new_thread(self.send_receive_client_message,
                                     (self.client, addr))
-
-    def accept_drones(self):
-        while True:
-            data, address = self.server_drones.recvfrom(4096)
-
-            self.drones.append(data)
-
-            th._start_new_thread(self._receive_drones_message, (data, address))
 
 
     def send_receive_client_message(self, client_connection, client_ip_addr):
@@ -64,9 +107,6 @@ class Gateway:
             elif data.startswith("SEND".encode()):
                 self.__send_behaviour(data)
 
-
-            
-                
     def __send_behaviour(self, data):
         res = data.decode().split(":", 1)
 
@@ -83,7 +123,6 @@ class Gateway:
 
         self._sent_drone_message()
 
-
     def __ask_behaviour(self, data):
         available = ""
 
@@ -97,42 +136,13 @@ class Gateway:
         self.client.send(available.encode())
 
 
-    def _receive_drones_message(self, drone_connection, drone_ip_addr):     
-        
-        drone_name = drone_connection.recv(4096)
 
-        while True:
-
-            data = drone_connection.recvfrom(4096)
-            if not data: break
-
-            print("DATA:")
-            print(data)
-
-            res = data.decode().split(":", 1)
-
-            self.drones_names.append(res[1])
-
-    def _sent_drone_message(self):
-        self.server_drones.sendto(self.address_to_deliver.encode(), self.ip_to_deliver)
+   
 
 
-    # Restituisce l'indice del drone corrente nell'elenco dei droni
-    def get_drone_index(self, curr_drone):
-        idx = 0
-        for conn in self.drones:
-            if conn == curr_drone:
-                break
-            idx = idx + 1
+ 
 
-        return idx
 
-    # Indica se il drone è diponibile
-    def is_drone_ready(self, drone_ip):
-        for d in self.drones:
-            if d == drone_ip:
-                return True
-        return False
 
 
 
@@ -175,5 +185,6 @@ class Gateway:
 if __name__ == "__main__":
     g = Gateway()
     g.createWindow()
-    #c1.connect('Client')
-    #c1.createWindow()
+    
+    
+
