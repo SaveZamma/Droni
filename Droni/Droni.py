@@ -19,6 +19,7 @@ class Drone(threading.Thread):
     isAvailable = True
     droneSocket = None
 
+    window = None
     display = None
 
     def __init__(self, dorneAddress, id):
@@ -32,7 +33,15 @@ class Drone(threading.Thread):
         # Bind to client's IP and Port. 
         # Different clients should have different ports, that's why we use randint() here
         self.droneSocket.bind((dorneAddress, rnd.randint(8000,9000)))
-        
+
+    
+    def presentSelf(self):
+        msg = f'CONNECT_REQUEST:{self.ID}'
+        try:
+            self.droneSocket.sendto(msg.encode(), (HOST[0], HOST[1]))
+            self._printOnDisplay(f'Drone {self.ID}: {msg}')
+        except:
+            print('ERROR: Could not send message to server')
 
     def sendAvailability(self):
         msg = "True" if self.isAvailable else "False"
@@ -59,16 +68,17 @@ class Drone(threading.Thread):
         t = threading.Thread(target=self.receive)
         t.start()
 
-        self.sendAvailability()
         self.__createWindow()
+        self.presentSelf()
+        self.window.mainloop()
 
 
     def __createWindow(self):
-        window = tk.Tk()
-        window.title("Drone " + self.ID.__str__())
+        self.window = tk.Tk()
+        self.window.title("Drone " + self.ID.__str__())
 
         # drones side of gateway interface
-        drones_frame = tk.Frame(window)
+        drones_frame = tk.Frame(self.window)
         lblLine = tk.Label(drones_frame, text="Drones Messages")
         lblLine.pack(side=tk.TOP)
 
@@ -87,10 +97,11 @@ class Drone(threading.Thread):
         drones_frame.pack(side=tk.TOP, pady=(5, 10))
         self.display.insert(tk.END, 'Drone START')
 
-        window.mainloop()
-
-    
-
+    def _printOnDisplay(self,text):
+            print(text)
+            self.display.config(state=tk.NORMAL)
+            self.display.insert(tk.END, text+"\n")
+            self.display.config(state=tk.DISABLED)
 
 
 if __name__ == '__main__':

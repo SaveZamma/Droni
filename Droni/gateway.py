@@ -21,7 +21,7 @@ class Gateway:
     cDisplayer = None
 
     D_HOST = ('127.168.1.1', 8081)
-    DRONES_CONNECTED = []
+    DRONES_CONNECTED = [] # Keep track of connected drones as (IP_Address, PORT, ID)
     dSocket = None
     dDisplayer = None
     dMessages = None
@@ -73,8 +73,8 @@ class Gateway:
         while i < DRONES_NUMBER:
             msg, sender = self.dSocket.recvfrom(BUFSIZE)
 
-            if msg.decode().startswith('AVAILABLE:'):
-                self.DRONES_CONNECTED.append((sender[0],self.calculateDroneID(sender)))
+            if msg.decode().startswith('CONNECT_REQUEST:'):
+                self.DRONES_CONNECTED.append((sender[0],sender[1], self.calculateDroneID(sender)))
 
                 i = i + 1
         
@@ -87,6 +87,23 @@ class Gateway:
              - `sender`: Tuple (IP, Port)
         """
         return int(sender[0][len(sender[0])-1:])-2
+
+    def is_drone_ready(self,droneID):
+        drone = self.getDrone(droneID)
+        self.sendToDrone(drone,f'ASK:AVAILABILITY')
+        
+    def getDrone(self,droneID):
+        for drone in self.DRONES_CONNECTED:
+            if len(droneID) == 1 and droneID == f'{drone[2]}':
+                return drone
+            elif droneID == drone[0]:
+                return drone
+    
+    def sendToDrone(self,drone,text):
+        try:
+            self.dSocket.sendto(text.encode(), (drone[0], drone[1]))
+        except:
+            print('ERROR: Unable to send message to drone')
 
     ###########################################################################
 
@@ -102,16 +119,17 @@ class Gateway:
     def send_receive_client_message(self, client_connection, client_ip_addr):
 
         client_name = client_connection.recv(4096)
+        self._printOnDisplayer(self.cDisplayer, f'Connecting {client_name.decode()}...')
 
         while True:
             
             data = client_connection.recv(4096)
             if not data: break
-
-            print("DATA:")
-            print(data)
+            # print("DATA:")
+            # print(data)
 
             if data.startswith("ASK".encode()):
+                self._printOnDisplayer(self.cDisplayer, f'Client asks for drone {data.decode().split(":")[1]} availability')
                 self.__ask_behaviour(data)
             elif data.startswith("SEND".encode()):
                 self.__send_behaviour(data)
@@ -192,8 +210,6 @@ class Gateway:
 
 
 if __name__ == "__main__":
-    g = Gateway()
-    #g.createWindow()
-    
+    g = Gateway()  
     
 
