@@ -44,9 +44,9 @@ class Drone(threading.Thread):
             print('ERROR: Could not send message to server')
 
     def sendAvailability(self):
-        msg = "True" if self.isAvailable else "False"
-        msg = 'AVAILABLE:' + msg
         try:
+            msg = "True" if self.isAvailable else "False"
+            msg = f'AVAILABLE:{self.ID}:{msg}'
             self.droneSocket.sendto(msg.encode(), (HOST[0], HOST[1]))
             print(f'Drone {self.ID}: {msg}')
         except:
@@ -57,7 +57,11 @@ class Drone(threading.Thread):
         while True:
             try:
                 msg, _ = self.droneSocket.recvfrom(BUFSIZE)
-                print(f'{self.ID} Received: {msg.decode()}'+ NEWLINE)
+                msg = msg.decode()
+                print(f'{self.ID} Received: {msg}')
+
+                if msg.startswith('ASK:'):
+                    self.sendAvailability()
 
 
             except:

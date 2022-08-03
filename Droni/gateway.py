@@ -5,7 +5,6 @@ import socket as sk
 import tkinter as tk
 import threading as th
 import queue
-from tkinter.tix import WINDOW
     
 DRONES_NUMBER = 3
 BUFSIZE = 1024
@@ -34,7 +33,9 @@ class Gateway:
 
         self.server_client.bind((self.HOST_C_ADDR, self.HOST_C_PORT))
         self.server_client.listen(5)  # il server � in ascolto per la connessione del client
-        th._start_new_thread(self.accept_client, ())
+        #th._start_new_thread(self.accept_client, ())
+        t = th.Thread(target=self.accept_client)
+        t.start()
 
         self.init_UDP_connection()
 
@@ -59,10 +60,13 @@ class Gateway:
         while True:
             try:
                 msg, addr = self.dSocket.recvfrom(BUFSIZE)
+                msg = msg.decode()
                 self.dMessages.put((msg, addr))
-                self._printOnDisplayer(self.dDisplayer, f'{addr} sent: {msg.decode()} ')
+                self._printOnDisplayer(self.dDisplayer, f'{addr} sent: {msg} ')
 
-                if msg.decode().startswith('AVAILABLE:'):
+                if msg.startswith('AVAILABLE:'):
+                    data = msg.split(':')
+                    self._answerAvailability(data[1], data[2])
                     pass
 
             except:
@@ -90,6 +94,9 @@ class Gateway:
 
     def is_drone_ready(self,droneID):
         drone = self.getDrone(droneID)
+        if drone is None:
+            self._answerAvailability(droneID, False)
+            return False
         self.sendToDrone(drone,f'ASK:AVAILABILITY')
         
     def getDrone(self,droneID):
@@ -105,6 +112,8 @@ class Gateway:
         except:
             print('ERROR: Unable to send message to drone')
 
+
+
     ###########################################################################
 
     def accept_client(self):
@@ -119,7 +128,7 @@ class Gateway:
     def send_receive_client_message(self, client_connection, client_ip_addr):
 
         client_name = client_connection.recv(4096)
-        self._printOnDisplayer(self.cDisplayer, f'Connecting {client_name.decode()}...')
+        self._printOnDisplayer(self.cDisplayer, f'{client_name.decode()} connected')
 
         while True:
             
@@ -131,6 +140,7 @@ class Gateway:
             if data.startswith("ASK".encode()):
                 self._printOnDisplayer(self.cDisplayer, f'Client asks for drone {data.decode().split(":")[1]} availability')
                 self.__ask_behaviour(data)
+                
             elif data.startswith("SEND".encode()):
                 self.__send_behaviour(data)
 
@@ -151,22 +161,25 @@ class Gateway:
         self._sent_drone_message()
 
     def __ask_behaviour(self, data):
-        available = ""
+        # available = ""
 
         res = data.decode().split(":", 1)
+        self.is_drone_ready(res[1])
 
-        if self.is_drone_ready(res[1]):
-            available = "True"
-        else:
-            available = "False"
+        # if self.is_drone_ready(res[1]):
+        #     available = "True"
+        # else:
+        #     available = "False"
 
-        self.client.send(available.encode())
+        # self.client.send(available.encode())
 
-
+    def _answerAvailability(self, droneID, isAvailable):
+        msg = 'ASK:'
+        msg += f'{droneID}:'
+        msg += 'True' if isAvailable else 'False'
+        self.client.send(msg.encode())
 
    
-
-
 
     def createWindow(self):
         self.WINDOW = tk.Tk()

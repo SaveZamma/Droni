@@ -30,7 +30,7 @@ class Client:
             self.client.send(name.encode())
             
             threading._start_new_thread(self.receiveMessage, ())
-
+            print(f'Successfully connected to {self.HOST_ADDR}')
         except Exception as e:
             print(e)
         
@@ -53,14 +53,23 @@ class Client:
 
             if not msgFromServer: break
 
-            if msgFromServer.startswith("".encode()):
-                self.available = msgFromServer.decode()
-                self.enable_send_btn()
+            msg = msgFromServer.decode().split(':')
 
-                self.display["text"] = msgFromServer.decode()
+            if msg[0] == 'ASK':
+                self.showAvailability(msg)
 
 
         self.client.close()
+
+    def showAvailability(self,serverMsg):
+        self.available = serverMsg[2]
+        if self.available == 'True':
+            self.enable_send_btn()
+
+        text = f'Drone {serverMsg[1]} is '
+        text += 'available' if serverMsg[2] == 'True' else 'not available'
+
+        self.display["text"] = text
 
     def enable_send_btn(self):
         if self.available == "True":
