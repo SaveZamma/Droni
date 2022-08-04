@@ -4,7 +4,6 @@ import socket as sk
 import threading
 import random as rnd
 import tkinter as tk
-from token import NEWLINE
 import time
 
 DRONES_NUMBER = 3
@@ -13,11 +12,15 @@ dronesThreads = []
 HOST = ('127.168.1.1', 8081)
 BUFSIZE = 1024
 
+MIN_DELIVERY_TIME = 10
+MAX_DELIVERY_TIME = 30
+
 class Drone(threading.Thread):
     ID = 0
     IP_ADDR = ''
     isAvailable = True
     droneSocket = None
+    deliveryAddr = None
 
     window = None
     display = None
@@ -46,9 +49,35 @@ class Drone(threading.Thread):
     def sendAvailability(self):
         try:
             msg = "True" if self.isAvailable else "False"
+            self._printOnDisplay(f'Availability request: {msg}')
             msg = f'AVAILABLE:{self.ID}:{msg}'
             self.droneSocket.sendto(msg.encode(), (HOST[0], HOST[1]))
             print(f'Drone {self.ID}: {msg}')
+        except:
+            print('ERROR: Could not send message to server')
+
+
+    def _takeOrder(self, address):
+        self.deliveryAddr = address
+        self._sendDeliveryStatus('IN_TRANSIT')
+        self._deliverOrder()
+
+    def _deliverOrder(self):
+        deliveryTime = rnd.randint(MIN_DELIVERY_TIME, MAX_DELIVERY_TIME)
+        self._printOnDisplay(f'Delivering to {self.deliveryAddr}. Estimated delivery time: {deliveryTime}')
+
+        self.isAvailable = False
+        time.sleep(deliveryTime)
+        self.isAvailable = True
+
+        self._printOnDisplay(f'Order delivered')
+        self._sendDeliveryStatus('DELIVERED')
+
+
+    def _sendDeliveryStatus(self,status):
+        try:
+            msg = f'DELIVERY:{self.ID}:{status}'
+            self.droneSocket.sendto(msg.encode(), (HOST[0], HOST[1]))
         except:
             print('ERROR: Could not send message to server')
 
@@ -62,6 +91,9 @@ class Drone(threading.Thread):
 
                 if msg.startswith('ASK:'):
                     self.sendAvailability()
+
+                if msg.startswith('DELIVERY:'):
+                    self._takeOrder(msg.split(':')[1])
 
 
             except:

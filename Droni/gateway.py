@@ -25,9 +25,7 @@ class Gateway:
     dDisplayer = None
     dMessages = None
 
-    address_to_deliver = ""
-    ip_to_deliver = ""
-     
+
     def __init__(self):
         self.createWindow()
 
@@ -67,8 +65,10 @@ class Gateway:
                 if msg.startswith('AVAILABLE:'):
                     data = msg.split(':')
                     self._answerAvailability(data[1], data[2])
+                
+                if msg.startswith('DELIVERY:'):
                     pass
-
+                
             except:
                 print('ERROR: Failed to receive message')
 
@@ -93,25 +93,30 @@ class Gateway:
         return int(sender[0][len(sender[0])-1:])-2
 
     def is_drone_ready(self,droneID):
-        drone = self.getDrone(droneID)
+        drone = self._getDrone(droneID)
         if drone is None:
             self._answerAvailability(droneID, False)
             return False
-        self.sendToDrone(drone,f'ASK:AVAILABILITY')
+        self._sendToDrone(drone,f'ASK:AVAILABILITY')
         
-    def getDrone(self,droneID):
+    def _getDrone(self,droneID):
         for drone in self.DRONES_CONNECTED:
             if len(droneID) == 1 and droneID == f'{drone[2]}':
                 return drone
             elif droneID == drone[0]:
                 return drone
     
-    def sendToDrone(self,drone,text):
+    def _sendToDrone(self,drone,text):
         try:
             self.dSocket.sendto(text.encode(), (drone[0], drone[1]))
         except:
             print('ERROR: Unable to send message to drone')
 
+    def _sendDelivery(self,droneID,address):
+        drone = self._getDrone(droneID)
+        if drone is not None:
+            msg = f'DELIVERY:{address}'
+            self._sendToDrone(drone,msg)
 
 
     ###########################################################################
@@ -142,36 +147,26 @@ class Gateway:
                 self.__ask_behaviour(data)
                 
             elif data.startswith("SEND".encode()):
+                self._printOnDisplayer(self.cDisplayer, f'Delivery order for drone {data.decode().split(":")[1]}')
                 self.__send_behaviour(data)
 
     def __send_behaviour(self, data):
-        res = data.decode().split(":", 1)
+        res = data.decode().split(":")
 
-        msg = {
-            "IP_DRONE": res[1],
-            "ADDR": res[2]
-        }
+        droneID = res[1]
+        deliveryAddress = res[2]
 
-        print("IP_DRONE: " + msg.get("IP_DRONE") + "\n")
-        print("ADDR: " + msg.get("ADDR") + "\n")
+        print("ID_DRONE: " + droneID + "\n")
+        print("ADDR: " + deliveryAddress + "\n")
+        self._printOnDisplayer(self.cDisplayer, f'{droneID} -> {deliveryAddress}')
 
-        self.ip_to_deliver = msg.get("IP_DRONE")
-        self.address_to_deliver = msg.get("ADDR")
-
-        self._sent_drone_message()
+        self._sendDelivery(droneID, deliveryAddress)
 
     def __ask_behaviour(self, data):
         # available = ""
 
         res = data.decode().split(":", 1)
         self.is_drone_ready(res[1])
-
-        # if self.is_drone_ready(res[1]):
-        #     available = "True"
-        # else:
-        #     available = "False"
-
-        # self.client.send(available.encode())
 
     def _answerAvailability(self, droneID, isAvailable):
         msg = 'ASK:'
