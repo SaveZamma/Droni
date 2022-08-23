@@ -14,12 +14,12 @@ class Gateway:
 
     server_client = sk.socket(sk.AF_INET, sk.SOCK_STREAM)
     server_drones = sk.socket(sk.AF_INET, sk.SOCK_DGRAM)
-    HOST_C_ADDR = '127.0.0.1'
-    HOST_C_PORT = 8080
+    CLIENT_IP = '10.10.10.1'
+    CLIENT_PORT = 8080
     client = None
     cDisplayer = None
 
-    D_HOST = ('127.168.1.1', 8081)
+    DRONES_NETWORK = ('192.168.1.1', 8081)
     DRONES_CONNECTED = [] # Keep track of connected drones as (IP_Address, PORT, ID)
     dSocket = None
     dDisplayer = None
@@ -29,7 +29,7 @@ class Gateway:
     def __init__(self):
         self.createWindow()
 
-        self.server_client.bind((self.HOST_C_ADDR, self.HOST_C_PORT))
+        self.server_client.bind(('localhost', self.CLIENT_PORT))
         self.server_client.listen(5)  # il server � in ascolto per la connessione del client
         #th._start_new_thread(self.accept_client, ())
         t = th.Thread(target=self.accept_client)
@@ -44,14 +44,14 @@ class Gateway:
 
     def init_UDP_connection(self):
         self.dSocket = sk.socket(sk.AF_INET, sk.SOCK_DGRAM)
-        self.dSocket.bind(self.D_HOST)
+        self.dSocket.bind(('localhost', 8081))
         self.dMessages = queue.Queue()
 
         t1 = th.Thread(target=self.UDP_receive)
         t1.start()
 
     def UDP_receive(self):
-        self._printOnDisplayer(self.dDisplayer, f'Listening on {self.D_HOST}')
+        self._printOnDisplayer(self.dDisplayer, f'Listening on {self.DRONES_NETWORK}')
 
         self.registerDrones()
 
@@ -59,8 +59,9 @@ class Gateway:
             try:
                 msg, addr = self.dSocket.recvfrom(BUFSIZE)
                 msg = msg.decode()
+                drone = self._findDrone(addr)
                 self.dMessages.put((msg, addr))
-                self._printOnDisplayer(self.dDisplayer, f'{addr} sent: {msg} ')
+                self._printOnDisplayer(self.dDisplayer, f'{drone[0:2]} sent: {msg} ')
 
                 if msg.startswith('AVAILABLE:'):
                     data = msg.split(':')
@@ -78,19 +79,19 @@ class Gateway:
             msg, sender = self.dSocket.recvfrom(BUFSIZE)
 
             if msg.decode().startswith('CONNECT_REQUEST:'):
-                self.DRONES_CONNECTED.append((sender[0],sender[1], self.calculateDroneID(sender)))
+                droneID = i;
+                drone_ip = f'192.168.1.{droneID+1}'
+                self.DRONES_CONNECTED.append((drone_ip, sender[1], droneID))
 
-                i = i + 1
+            i = i + 1
         
         self._printOnDisplayer(self.dDisplayer, f'Drones connected: {self.DRONES_CONNECTED}')
 
-    def calculateDroneID(self,sender):
-        """Calculates the drone's ID starting from its IP address.
-        
-            Attributes:
-             - `sender`: Tuple (IP, Port)
-        """
-        return int(sender[0][len(sender[0])-1:])-2
+    def _findDrone(self,sender):
+        for drone in self.DRONES_CONNECTED:
+            if (drone[1] == sender[1]):
+                return drone
+
 
     def is_drone_ready(self,droneID):
         drone = self._getDrone(droneID)
@@ -108,7 +109,7 @@ class Gateway:
     
     def _sendToDrone(self,drone,text):
         try:
-            self.dSocket.sendto(text.encode(), (drone[0], drone[1]))
+            self.dSocket.sendto(text.encode(), ('localhost', drone[1]))
         except:
             print('ERROR: Unable to send message to drone')
 
@@ -133,7 +134,7 @@ class Gateway:
     def send_receive_client_message(self, client_connection, client_ip_addr):
 
         client_name = client_connection.recv(4096)
-        self._printOnDisplayer(self.cDisplayer, f'{client_name.decode()} connected')
+        self._printOnDisplayer(self.cDisplayer, f'{client_name.decode()} connected on {self.CLIENT_IP}')
 
         while True:
             
@@ -219,5 +220,3 @@ class Gateway:
 
 if __name__ == "__main__":
     g = Gateway()  
-    
-

@@ -9,7 +9,9 @@ import time
 DRONES_NUMBER = 3
 dronesThreads = []
 
-HOST = ('127.168.1.1', 8081)
+GATEWAY_IP = '192.168.1.1'
+
+# HOST = ('127.168.1.1', 8081)
 BUFSIZE = 1024
 
 MIN_DELIVERY_TIME = 10
@@ -21,6 +23,7 @@ class Drone(threading.Thread):
     isAvailable = True
     droneSocket = None
     deliveryAddr = None
+    requester = None
 
     window = None
     display = None
@@ -35,13 +38,13 @@ class Drone(threading.Thread):
 
         # Bind to client's IP and Port. 
         # Different clients should have different ports, that's why we use randint() here
-        self.droneSocket.bind((dorneAddress, rnd.randint(8000,9000)))
+        self.droneSocket.bind(('localhost', rnd.randint(8000,9000)))
 
     
     def presentSelf(self):
         msg = f'CONNECT_REQUEST:{self.ID}'
         try:
-            self.droneSocket.sendto(msg.encode(), (HOST[0], HOST[1]))
+            self.droneSocket.sendto(msg.encode(), ('localhost', 8081))
             self._printOnDisplay(f'Drone {self.ID}: {msg}')
         except:
             print('ERROR: Could not send message to server')
@@ -51,7 +54,7 @@ class Drone(threading.Thread):
             msg = "True" if self.isAvailable else "False"
             self._printOnDisplay(f'Availability request: {msg}')
             msg = f'AVAILABLE:{self.ID}:{msg}'
-            self.droneSocket.sendto(msg.encode(), (HOST[0], HOST[1]))
+            self.droneSocket.sendto(msg.encode(), self.requester)
             print(f'Drone {self.ID}: {msg}')
         except:
             print('ERROR: Could not send message to server')
@@ -77,7 +80,7 @@ class Drone(threading.Thread):
     def _sendDeliveryStatus(self,status):
         try:
             msg = f'DELIVERY:{self.ID}:{status}'
-            self.droneSocket.sendto(msg.encode(), (HOST[0], HOST[1]))
+            self.droneSocket.sendto(msg.encode(), self.requester)
         except:
             print('ERROR: Could not send message to server')
 
@@ -85,7 +88,7 @@ class Drone(threading.Thread):
     def receive(self):
         while True:
             try:
-                msg, _ = self.droneSocket.recvfrom(BUFSIZE)
+                msg, self.requester = self.droneSocket.recvfrom(BUFSIZE)
                 msg = msg.decode()
                 print(f'{self.ID} Received: {msg}')
 
@@ -107,7 +110,6 @@ class Drone(threading.Thread):
         self.__createWindow()
         self.presentSelf()
         self.window.mainloop()
-
 
     def __createWindow(self):
         self.window = tk.Tk()
@@ -141,7 +143,7 @@ class Drone(threading.Thread):
 
 
 if __name__ == '__main__':
-    baseIP = '127.168.1.'
+    baseIP = '192.168.1.'
 
     i = 0
     while i < DRONES_NUMBER:
@@ -151,11 +153,3 @@ if __name__ == '__main__':
         d.start()
 
         i = i+1
-
-
-
-
-
-
-
-

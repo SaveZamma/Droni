@@ -7,6 +7,7 @@ import tkinter as tk
 
 class Client:
 
+    CLIENT_IP = '10.10.10.1'
     HOST_ADDR = ''
     HOST_PORT = 0
     BUFFER_SIZE = 1024
@@ -29,11 +30,11 @@ class Client:
     
     def connect(self, name):
         try:
-            self.client.connect((self.HOST_ADDR, self.HOST_PORT))
+            self.client.connect(('localhost', self.HOST_PORT))
             self.client.send(name.encode())
             
             threading._start_new_thread(self.receiveMessage, ())
-            print(f'Successfully connected to {self.HOST_ADDR}')
+            #print(f'Successfully connected to {self.HOST_ADDR}')
         except Exception as e:
             print(e)
         
@@ -53,7 +54,11 @@ class Client:
         self.available = 'False'
         self.enable_send_btn()
 
-        bMsg = str.encode("ASK:" + self.drone_entry.get())
+        drone = self.drone_entry.get()
+        if drone == '':
+            return
+
+        bMsg = str.encode("ASK:" + drone)
         self.client.sendall(bMsg)
 
     def receiveMessage(self):
@@ -84,7 +89,6 @@ class Client:
             self.btn_connect.config(state=tk.NORMAL)
         else:
             self.btn_connect.config(state=tk.DISABLED)
-
 
     def createWindow(self):
         window = tk.Tk()
@@ -134,9 +138,10 @@ class Client:
 
         window.mainloop()
 
+
 if __name__ == "__main__":
     print('Creating Client...')
-    c1 = Client('127.0.0.1', 8080)
+    c1 = Client('10.10.10.1', 8080)
 
     print('Connecting...')
     c1.connect('Client')
