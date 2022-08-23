@@ -55,8 +55,12 @@ class Client:
         self.available = 'False'
         self.enable_send_btn()
 
-        bMsg = str.encode(str(time.time()) + '|' + "ASK:" + self.drone_entry.get())
-        self.client.sendall(bMsg)
+        if len([*self.drone_entry.get()]) == 1 or len(self.drone_entry.get().split('.')) >= 4:
+            
+            bMsg = str.encode(str(time.time()) + '|' + "ASK:" + self.drone_entry.get())
+            self.client.sendall(bMsg)
+        else :
+            self._printOnDisplay('Invalid name format')
 
     def receiveMessage(self):
         while True:
