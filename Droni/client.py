@@ -14,7 +14,6 @@ class Client:
     client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     display = None
 
-    ind_var = None
     drone_var = None
     ind_entry = None
     drone_entry = None
@@ -91,7 +90,6 @@ class Client:
         window = tk.Tk()
         window.title("Client")
 
-        self.ind_var = tk.StringVar()
         self.drone_var = tk.StringVar()
 
         # costruiisco il panel per inserire il drone di destinazione
