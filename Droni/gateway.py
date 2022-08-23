@@ -5,6 +5,7 @@ import socket as sk
 import tkinter as tk
 import threading as th
 import queue
+import time
     
 DRONES_NUMBER = 3
 BUFSIZE = 1024
@@ -57,17 +58,27 @@ class Gateway:
 
         while True:
             try:
-                msg, addr = self.dSocket.recvfrom(BUFSIZE)
-                msg = msg.decode()
+                msg_t, addr = self.dSocket.recvfrom(BUFSIZE)
+                msg_t = msg_t.decode()
                 drone = self._findDrone(addr)
-                self.dMessages.put((msg, addr))
-                self._printOnDisplayer(self.dDisplayer, f'{drone[0:2]} sent: {msg} ')
+                self.dMessages.put((msg_t, addr))
+                self._printOnDisplayer(self.dDisplayer, f'{drone[0:2]} sent: {msg_t} ')
 
-                if msg.startswith('AVAILABLE:'):
-                    data = msg.split(':')
+                msg = msg_t.split("|")
+
+                UDP_time = msg[0]
+                UDP_delivery_time = time.time() - float(UDP_time)
+                self._printOnDisplayer(self.dDisplayer, f'UDP package delivery time: {UDP_delivery_time} ')
+
+                sent_msg = msg[1]
+                self.dMessages.put((sent_msg, addr))
+                self._printOnDisplayer(self.dDisplayer, f'{addr} sent: {sent_msg} ')
+
+                if sent_msg.startswith('AVAILABLE:'):
+                    data = sent_msg.split(':')
                     self._answerAvailability(data[1], data[2])
                 
-                if msg.startswith('DELIVERY:'):
+                if sent_msg.startswith('DELIVERY:'):
                     pass
                 
             except:
@@ -76,9 +87,17 @@ class Gateway:
     def registerDrones(self):
         i = 0;
         while i < DRONES_NUMBER:
-            msg, sender = self.dSocket.recvfrom(BUFSIZE)
+            msg_t, sender = self.dSocket.recvfrom(BUFSIZE)
 
-            if msg.decode().startswith('CONNECT_REQUEST:'):
+            msg_t = msg_t.decode()
+
+            msg = msg_t.split("|")
+
+            UDP_time = msg[0]
+            UDP_delivery_time = time.time() - float(UDP_time)
+            self._printOnDisplayer(self.dDisplayer, f'UDP package delivery time: {UDP_delivery_time} ')
+
+            if msg[1].startswith('CONNECT_REQUEST:'):
                 droneID = i;
                 drone_ip = f'192.168.1.{droneID+1}'
                 self.DRONES_CONNECTED.append((drone_ip, sender[1], droneID))
@@ -98,7 +117,7 @@ class Gateway:
         if drone is None:
             self._answerAvailability(droneID, False)
             return False
-        self._sendToDrone(drone,f'ASK:AVAILABILITY')
+        self._sendToDrone(drone, (str(time.time()) + '|' + f'ASK:AVAILABILITY'))
         
     def _getDrone(self,droneID):
         for drone in self.DRONES_CONNECTED:
@@ -117,7 +136,7 @@ class Gateway:
         drone = self._getDrone(droneID)
         if drone is not None:
             msg = f'DELIVERY:{address}'
-            self._sendToDrone(drone,msg)
+            self._sendToDrone(drone, (str(time.time()) + '|' + msg))
 
 
     ###########################################################################
@@ -133,26 +152,45 @@ class Gateway:
 
     def send_receive_client_message(self, client_connection, client_ip_addr):
 
-        client_name = client_connection.recv(4096)
-        self._printOnDisplayer(self.cDisplayer, f'{client_name.decode()} connected on {self.CLIENT_IP}')
+        msgFromClient = client_connection.recv(4096)
+
+        msg_t = msgFromClient.decode()
+
+        msg = msg_t.split("|")
+
+        TCP_time = msg[0]
+        TCP_delivery_time = time.time() - float(TCP_time)
+        self._printOnDisplayer(self.cDisplayer, f'TCP package delivery time: {TCP_delivery_time} ')
+
+        client_name = msg[1]
+
+        self._printOnDisplayer(self.cDisplayer, f'{client_name} connected on {self.CLIENT_IP}')
 
         while True:
             
-            data = client_connection.recv(4096)
-            if not data: break
-            # print("DATA:")
-            # print(data)
+            msgFromClient = client_connection.recv(4096)
+            if not msgFromClient: break
 
-            if data.startswith("ASK".encode()):
-                self._printOnDisplayer(self.cDisplayer, f'Client asks for drone {data.decode().split(":")[1]} availability')
+            msg_t = msgFromClient.decode()
+
+            msg = msg_t.split("|")
+
+            TCP_time = msg[0]
+            TCP_delivery_time = time.time() - float(TCP_time)
+            self._printOnDisplayer(self.cDisplayer, f'TCP package delivery time: {TCP_delivery_time} ')
+
+            data = msg[1]
+
+            if data.startswith("ASK"):
+                self._printOnDisplayer(self.cDisplayer, f'Client asks for drone {data.split(":")[1]} availability')
                 self.__ask_behaviour(data)
                 
-            elif data.startswith("SEND".encode()):
-                self._printOnDisplayer(self.cDisplayer, f'Delivery order for drone {data.decode().split(":")[1]}')
+            elif data.startswith("SEND"):
+                self._printOnDisplayer(self.cDisplayer, f'Delivery order for drone {data.split(":")[1]}')
                 self.__send_behaviour(data)
 
     def __send_behaviour(self, data):
-        res = data.decode().split(":")
+        res = data.split(":")
 
         droneID = res[1]
         deliveryAddress = res[2]
@@ -166,11 +204,12 @@ class Gateway:
     def __ask_behaviour(self, data):
         # available = ""
 
-        res = data.decode().split(":", 1)
+        res = data.split(":", 1)
         self.is_drone_ready(res[1])
 
     def _answerAvailability(self, droneID, isAvailable):
-        msg = 'ASK:'
+        msg = str(time.time()) + '|'
+        msg += 'ASK:'
         msg += f'{droneID}:'
         msg += 'True' if isAvailable else 'False'
         self.client.send(msg.encode())
@@ -187,7 +226,7 @@ class Gateway:
         lblLine.pack(side=tk.TOP)
         scrollBar = tk.Scrollbar(client_frame)
         scrollBar.pack(side=tk.RIGHT, fill=tk.Y)
-        self.cDisplayer = tk.Text(client_frame, height=10, width=30)
+        self.cDisplayer = tk.Text(client_frame, height=20, width=50)
         self.cDisplayer.pack(side=tk.LEFT, fill=tk.Y, padx=(5, 0))
         scrollBar.config(command=self.cDisplayer.yview)
         self.cDisplayer.config(yscrollcommand=scrollBar.set,
@@ -202,7 +241,7 @@ class Gateway:
         lblLine.pack(side=tk.TOP)
         scrollBar = tk.Scrollbar(drones_frame)
         scrollBar.pack(side=tk.RIGHT, fill=tk.Y)
-        self.dDisplayer = tk.Text(drones_frame, height=10, width=30)
+        self.dDisplayer = tk.Text(drones_frame, height=20, width=50)
         self.dDisplayer.pack(side=tk.LEFT, fill=tk.Y, padx=(5, 0))
         scrollBar.config(command=self.dDisplayer.yview)
         self.dDisplayer.config(yscrollcommand=scrollBar.set,

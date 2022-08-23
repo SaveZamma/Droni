@@ -42,7 +42,7 @@ class Drone(threading.Thread):
 
     
     def presentSelf(self):
-        msg = f'CONNECT_REQUEST:{self.ID}'
+        msg = str(time.time()) + '|' + f'CONNECT_REQUEST:{self.ID}'
         try:
             self.droneSocket.sendto(msg.encode(), ('localhost', 8081))
             self._printOnDisplay(f'Drone {self.ID}: {msg}')
@@ -53,7 +53,7 @@ class Drone(threading.Thread):
         try:
             msg = "True" if self.isAvailable else "False"
             self._printOnDisplay(f'Availability request: {msg}')
-            msg = f'AVAILABLE:{self.ID}:{msg}'
+            msg = str(time.time()) + '|' + f'AVAILABLE:{self.ID}:{msg}'
             self.droneSocket.sendto(msg.encode(), self.requester)
             print(f'Drone {self.ID}: {msg}')
         except:
@@ -79,7 +79,7 @@ class Drone(threading.Thread):
 
     def _sendDeliveryStatus(self,status):
         try:
-            msg = f'DELIVERY:{self.ID}:{status}'
+            msg = str(time.time()) + '|' + f'DELIVERY:{self.ID}:{status}'
             self.droneSocket.sendto(msg.encode(), self.requester)
         except:
             print('ERROR: Could not send message to server')
@@ -88,15 +88,23 @@ class Drone(threading.Thread):
     def receive(self):
         while True:
             try:
-                msg, self.requester = self.droneSocket.recvfrom(BUFSIZE)
-                msg = msg.decode()
-                print(f'{self.ID} Received: {msg}')
+                msg_t, self.requester = self.droneSocket.recvfrom(BUFSIZE)
+                msg_t = msg_t.decode()
 
-                if msg.startswith('ASK:'):
+                msg = msg_t.split("|")
+
+                UDP_time = msg[0]
+                UDP_delivery_time = time.time() - float(UDP_time)
+                self._printOnDisplay(f'UDP package delivery time: {UDP_delivery_time} ')
+
+                msg_recived = msg[1]
+                print(f'{self.ID} Received: {msg_recived}')
+
+                if msg_recived.startswith('ASK:'):
                     self.sendAvailability()
 
-                if msg.startswith('DELIVERY:'):
-                    self._takeOrder(msg.split(':')[1])
+                if msg_recived.startswith('DELIVERY:'):
+                    self._takeOrder(msg_recived.split(':')[1])
 
 
             except:
@@ -115,7 +123,6 @@ class Drone(threading.Thread):
         self.window = tk.Tk()
         self.window.title("Drone " + self.ID.__str__())
 
-        # drones side of gateway interface
         drones_frame = tk.Frame(self.window)
         lblLine = tk.Label(drones_frame, text="Drones Messages")
         lblLine.pack(side=tk.TOP)
@@ -123,7 +130,7 @@ class Drone(threading.Thread):
         scrollBar = tk.Scrollbar(drones_frame)
         scrollBar.pack(side=tk.RIGHT, fill=tk.Y)
 
-        self.display = tk.Text(drones_frame, height=10, width=30)
+        self.display = tk.Text(drones_frame, height=15, width=40)
         self.display.pack(side=tk.LEFT, fill=tk.Y, padx=(5, 0))
 
         scrollBar.config(command=self.display.yview)

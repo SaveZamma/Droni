@@ -4,6 +4,7 @@ from pickle import NONE
 import socket
 import threading
 import tkinter as tk
+import time
 
 class Client:
 
@@ -31,7 +32,8 @@ class Client:
     def connect(self, name):
         try:
             self.client.connect(('localhost', self.HOST_PORT))
-            self.client.send(name.encode())
+            msg = str(time.time()) + '|' + name
+            self.client.send(msg.encode())
             
             threading._start_new_thread(self.receiveMessage, ())
             #print(f'Successfully connected to {self.HOST_ADDR}')
@@ -41,11 +43,10 @@ class Client:
     def sendOrder(self):
         print(self.drone_entry.get() + ':' + self.ind_entry.get())
 
-        bMsg = str.encode("SEND:" + self.drone_entry.get() + ':' + self.ind_entry.get())
+        bMsg = str.encode(str(time.time()) + '|' + "SEND:" + self.drone_entry.get() + ':' + self.ind_entry.get())
         self.client.sendall(bMsg)
 
         # riazzero il msg di disponibilità
-        self.display["text"] = ""
 
         self.available = "False"
         self.enable_send_btn()
@@ -58,8 +59,11 @@ class Client:
         if drone == '':
             return
 
-        bMsg = str.encode("ASK:" + drone)
-        self.client.sendall(bMsg)
+        if len(drone) == 1 or len(drone.split('.')) >= 4:
+            bMsg = str.encode(str(time.time()) + '|' + "ASK:" + drone)
+            self.client.sendall(bMsg)
+        else :
+            self._printOnDisplay('Invalid name format')
 
     def receiveMessage(self):
         while True:
@@ -67,10 +71,18 @@ class Client:
 
             if not msgFromServer: break
 
-            msg = msgFromServer.decode().split(':')
+            msg_t = msgFromServer.decode()
 
-            if msg[0] == 'ASK':
-                self.showAvailability(msg)
+            msg = msg_t.split("|")
+
+            TCP_time = msg[0]
+            TCP_delivery_time = time.time() - float(TCP_time)
+            self._printOnDisplay(f'TCP package delivery time: {TCP_delivery_time} ')
+
+            msg_client = msg[1].split(':')
+
+            if msg_client[0] == 'ASK':
+                self.showAvailability(msg_client)
 
         self.client.close()
 
@@ -82,7 +94,7 @@ class Client:
         text = f'Drone {serverMsg[1]} is '
         text += 'available' if serverMsg[2] == 'True' else 'not available'
 
-        self.display["text"] = text
+        self._printOnDisplay(text)
 
     def enable_send_btn(self):
         if self.available == "True":
@@ -126,17 +138,32 @@ class Client:
         self.btn_connect.pack(side=tk.LEFT)
         btn_frame.pack(side=tk.BOTTOM)
 
-        ## ask button
-        #btn_frame = tk.Frame(window)
-        #self.btn_ask = tk.Button(btn_frame, 
-        #                        text="ASK",
-        #                        command=lambda : self.ask_availability())
-        #self.btn_ask.pack(side=tk.RIGHT)
-        #btn_frame.pack(side=tk.BOTTOM)
+        # client display
+        client_frame = tk.Frame(window)
+        scrollBar = tk.Scrollbar(client_frame)
+        scrollBar.pack(side=tk.RIGHT, fill=tk.Y)
+
+        self.display = tk.Text(client_frame, height=15, width=40)
+        self.display.pack(side=tk.LEFT, fill=tk.Y, padx=(5, 0))
+
+        scrollBar.config(command=self.display.yview)
+        self.display.config(yscrollcommand=scrollBar.set,
+                         background="#F4F6F7",
+                         highlightbackground="grey",
+                         state="disabled")
+
+        client_frame.pack(side=tk.TOP, pady=(5, 10))
+        self.display.insert(tk.END, 'Client START')
 
         self.enable_send_btn()
 
         window.mainloop()
+
+    def _printOnDisplay(self,text):
+        print(text)
+        self.display.config(state=tk.NORMAL)
+        self.display.insert(tk.END, text+"\n")
+        self.display.config(state=tk.DISABLED)
 
 
 if __name__ == "__main__":
