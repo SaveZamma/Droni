@@ -4,7 +4,7 @@
     <SchemaVersion>2.0</SchemaVersion>
     <ProjectGuid>b8843aff-f78a-4636-a15e-543f55ae07cf</ProjectGuid>
     <ProjectHome>.</ProjectHome>
-    <StartupFile>Droni.py</StartupFile>
+    <StartupFile>client.py</StartupFile>
     <SearchPath>
     </SearchPath>
     <WorkingDirectory>.</WorkingDirectory>

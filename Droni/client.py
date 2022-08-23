@@ -13,8 +13,12 @@ class Client:
 
     client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     display = None
+
+    ind_var = None
+    drone_var = None
     ind_entry = None
     drone_entry = None
+
     btn_connect = None
     btn_ask = None
 
@@ -40,10 +44,16 @@ class Client:
         bMsg = str.encode("SEND:" + self.drone_entry.get() + ':' + self.ind_entry.get())
         self.client.sendall(bMsg)
 
+        # riazzero il msg di disponibilità
+        self.display["text"] = ""
+
         self.available = "False"
         self.enable_send_btn()
 
-    def ask_availability(self):
+    def ask_availability(self, *args):
+        self.available = 'False'
+        self.enable_send_btn()
+
         bMsg = str.encode("ASK:" + self.drone_entry.get())
         self.client.sendall(bMsg)
 
@@ -57,7 +67,6 @@ class Client:
 
             if msg[0] == 'ASK':
                 self.showAvailability(msg)
-
 
         self.client.close()
 
@@ -82,6 +91,18 @@ class Client:
         window = tk.Tk()
         window.title("Client")
 
+        self.ind_var = tk.StringVar()
+        self.drone_var = tk.StringVar()
+
+        # costruiisco il panel per inserire il drone di destinazione
+        drone_frame = tk.Frame(window)
+        lbl_drone = tk.Label(drone_frame, text = "ID/IP Drone:")
+        lbl_drone.pack(side=tk.LEFT)
+        self.drone_entry = tk.Entry(drone_frame, textvariable=self.drone_var)
+        self.drone_var.trace("w", self.ask_availability)
+        self.drone_entry.pack(side=tk.LEFT)
+        drone_frame.pack(side = tk.TOP)
+
         # costruiisco il panel per inserire l'indirizzo
         address_frame = tk.Frame(window)
         lbl_addr = tk.Label(address_frame, text = "Indirizzo:")
@@ -89,17 +110,9 @@ class Client:
         self.ind_entry = tk.Entry(address_frame)
         self.ind_entry.pack(side=tk.LEFT)
         address_frame.pack(side = tk.TOP)
-
-        # costruiisco il panel per inserire il drone di destinazione
-        drone_frame = tk.Frame(window)
-        lbl_drone = tk.Label(drone_frame, text = "ID/IP Drone:")
-        lbl_drone.pack(side=tk.LEFT)
-        self.drone_entry = tk.Entry(drone_frame)
-        self.drone_entry.pack(side=tk.LEFT)
-        drone_frame.pack(side = tk.TOP)
         
         msg_frame = tk.Frame(window)
-        self.display = tk.Label(msg_frame, text="POROMPOMPERO")
+        self.display = tk.Label(msg_frame, text="")
         self.display.pack(side=tk.TOP)
         msg_frame.pack(side = tk.BOTTOM)
 
@@ -111,13 +124,13 @@ class Client:
         self.btn_connect.pack(side=tk.LEFT)
         btn_frame.pack(side=tk.BOTTOM)
 
-        # ask button
-        btn_frame = tk.Frame(window)
-        self.btn_ask = tk.Button(btn_frame, 
-                                text="ASK",
-                                command=lambda : self.ask_availability())
-        self.btn_ask.pack(side=tk.RIGHT)
-        btn_frame.pack(side=tk.BOTTOM)
+        ## ask button
+        #btn_frame = tk.Frame(window)
+        #self.btn_ask = tk.Button(btn_frame, 
+        #                        text="ASK",
+        #                        command=lambda : self.ask_availability())
+        #self.btn_ask.pack(side=tk.RIGHT)
+        #btn_frame.pack(side=tk.BOTTOM)
 
         self.enable_send_btn()
 
