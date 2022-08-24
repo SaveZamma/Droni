@@ -1,2 +1,0 @@
-ip_address = 10.10.10.1, 
-mac_address = 00-08-74-4C-7F-1D, 

@@ -20,8 +20,7 @@ class Client:
     ind_entry = None
     drone_entry = None
 
-    btn_connect = None
-    btn_ask = None
+    btn_send = None
 
     available = "False"
 
@@ -40,13 +39,11 @@ class Client:
         except Exception as e:
             print(e)
         
-    def sendOrder(self):
+    def send_order(self):
         print(self.drone_entry.get() + ':' + self.ind_entry.get())
 
         bMsg = str.encode(str(time.time()) + '|' + "SEND:" + self.drone_entry.get() + ':' + self.ind_entry.get())
         self.client.sendall(bMsg)
-
-        # riazzero il msg di disponibilità
 
         self.available = "False"
         self.enable_send_btn()
@@ -59,11 +56,8 @@ class Client:
         if drone == '':
             return
 
-        if len(drone) == 1 or len(drone.split('.')) >= 4:
-            bMsg = str.encode(str(time.time()) + '|' + "ASK:" + drone)
-            self.client.sendall(bMsg)
-        else :
-            self._printOnDisplay('Invalid name format')
+        bMsg = str.encode(str(time.time()) + '|' + "ASK:" + drone)
+        self.client.sendall(bMsg)
 
     def receiveMessage(self):
         while True:
@@ -76,8 +70,7 @@ class Client:
             msg = msg_t.split("|")
 
             TCP_time = msg[0]
-            TCP_delivery_time = time.time() - float(TCP_time)
-            self._printOnDisplay(f'TCP package delivery time: {TCP_delivery_time} ')
+            self.get_transmission_time(TCP_time)
 
             msg_client = msg[1].split(':')
 
@@ -85,6 +78,11 @@ class Client:
                 self.showAvailability(msg_client)
 
         self.client.close()
+
+    def get_transmission_time(self, TCP_time):
+        TCP_delivery_time = time.time() - float(TCP_time)
+        self._printOnDisplay(f'TCP package delivery time: {TCP_delivery_time} ')
+
 
     def showAvailability(self,serverMsg):
         self.available = serverMsg[2]
@@ -98,9 +96,9 @@ class Client:
 
     def enable_send_btn(self):
         if self.available == "True":
-            self.btn_connect.config(state=tk.NORMAL)
+            self.btn_send.config(state=tk.NORMAL)
         else:
-            self.btn_connect.config(state=tk.DISABLED)
+            self.btn_send.config(state=tk.DISABLED)
 
     def createWindow(self):
         window = tk.Tk()
@@ -132,10 +130,10 @@ class Client:
 
         # send button
         btn_frame = tk.Frame(window)
-        self.btn_connect = tk.Button(btn_frame, 
-                                text="SEND",
-                                command=lambda : self.sendOrder())
-        self.btn_connect.pack(side=tk.LEFT)
+        self.btn_send = tk.Button(btn_frame,
+                                  text="SEND",
+                                  command=lambda : self.send_order())
+        self.btn_send.pack(side=tk.LEFT)
         btn_frame.pack(side=tk.BOTTOM)
 
         # client display
@@ -159,7 +157,7 @@ class Client:
 
         window.mainloop()
 
-    def _printOnDisplay(self,text):
+    def _printOnDisplay(self, text):
         print(text)
         self.display.config(state=tk.NORMAL)
         self.display.insert(tk.END, text+"\n")

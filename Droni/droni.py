@@ -115,11 +115,11 @@ class Drone(threading.Thread):
         t = threading.Thread(target=self.receive)
         t.start()
 
-        self.__createWindow()
+        self.createWindow()
         self.presentSelf()
         self.window.mainloop()
 
-    def __createWindow(self):
+    def createWindow(self):
         self.window = tk.Tk()
         self.window.title("Drone " + self.ID.__str__())
 

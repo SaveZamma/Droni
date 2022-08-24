@@ -7,8 +7,7 @@ import threading as th
 import queue
 import time
     
-DRONES_NUMBER = 3
-BUFSIZE = 1024
+
 
 class Gateway:
     WINDOW = None
@@ -26,6 +25,8 @@ class Gateway:
     dDisplayer = None
     dMessages = None
 
+    DRONES_NUMBER = 3
+    BUFSIZE = 1024
 
     def __init__(self):
         self.createWindow()
@@ -58,7 +59,7 @@ class Gateway:
 
         while True:
             try:
-                msg_t, addr = self.dSocket.recvfrom(BUFSIZE)
+                msg_t, addr = self.dSocket.recvfrom(self.BUFSIZE)
                 msg_t = msg_t.decode()
                 drone = self._findDrone(addr)
                 self.dMessages.put((msg_t, addr))
@@ -85,9 +86,9 @@ class Gateway:
                 print('ERROR: Failed to receive message')
 
     def registerDrones(self):
-        i = 0;
-        while i < DRONES_NUMBER:
-            msg_t, sender = self.dSocket.recvfrom(BUFSIZE)
+        i = 0
+        while i < self.DRONES_NUMBER:
+            msg_t, sender = self.dSocket.recvfrom(self.BUFSIZE)
 
             msg_t = msg_t.decode()
 
@@ -98,7 +99,7 @@ class Gateway:
             self._printOnDisplayer(self.dDisplayer, f'UDP package delivery time: {UDP_delivery_time} ')
 
             if msg[1].startswith('CONNECT_REQUEST:'):
-                droneID = i;
+                droneID = i
                 drone_ip = f'192.168.1.{droneID+1}'
                 self.DRONES_CONNECTED.append((drone_ip, sender[1], droneID))
 
@@ -213,8 +214,6 @@ class Gateway:
         msg += f'{droneID}:'
         msg += 'True' if isAvailable else 'False'
         self.client.send(msg.encode())
-
-   
 
     def createWindow(self):
         self.WINDOW = tk.Tk()
